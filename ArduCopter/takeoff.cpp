@@ -35,8 +35,8 @@ bool Mode::do_user_takeoff(float takeoff_alt_cm, bool must_navigate)
         return false;
     }
 
-    // Helicopters should return false if MAVlink takeoff command is received while the rotor is not spinning
     if (!motors->get_interlock() && copter.ap.using_interlock) {
+        // interlock does not allow motors to run
         return false;
     }
 
