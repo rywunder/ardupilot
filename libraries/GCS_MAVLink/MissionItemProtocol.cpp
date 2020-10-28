@@ -25,9 +25,29 @@ void MissionItemProtocol::init_send_requests(GCS_MAVLINK &_link,
 void MissionItemProtocol::handle_mission_clear_all(const GCS_MAVLINK &_link,
                                                    const mavlink_message_t &msg)
 {
-    bool success = true;
-    success = success && !receiving;
-    success = success && clear_all_items();
+    if (receiving) {
+        // someone is already uploading a mission.  If we are
+        // receiving from someone then we will allow them to clear -
+        // otherwise we deny.
+        if (msg.sysid != dest_sysid || msg.compid != dest_compid) {
+            // reject another upload until
+            send_mission_ack(_link, msg, MAV_MISSION_DENIED);
+            return;
+        }
+    }
+
+    bool success = clear_all_items();
+
+    if(receiving && success)
+    {
+        // close down previous upload connection
+        send_mission_ack(_link, msg, MAV_MISSION_ACCEPTED);
+        free_upload_resources();
+        receiving = false;
+        link = nullptr;
+        return;
+    }
+
     send_mission_ack(_link, msg, success ? MAV_MISSION_ACCEPTED : MAV_MISSION_ERROR);
 }
 
