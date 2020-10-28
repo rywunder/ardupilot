@@ -34,6 +34,7 @@ void MissionItemProtocol::handle_mission_clear_all(const GCS_MAVLINK &_link,
             send_mission_ack(_link, msg, MAV_MISSION_DENIED);
             return;
         }
+        free_upload_resources();
     }
 
     bool success = clear_all_items();
@@ -42,7 +43,6 @@ void MissionItemProtocol::handle_mission_clear_all(const GCS_MAVLINK &_link,
     {
         // close down previous upload connection
         send_mission_ack(_link, msg, MAV_MISSION_ACCEPTED);
-        free_upload_resources();
         receiving = false;
         link = nullptr;
         return;
