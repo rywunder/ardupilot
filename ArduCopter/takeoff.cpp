@@ -35,8 +35,8 @@ bool Mode::do_user_takeoff(float takeoff_alt_cm, bool must_navigate)
         return false;
     }
 
-    // Helicopters should return false if MAVlink takeoff command is received while the rotor is not spinning
-    if (motors->get_spool_state() != AP_Motors::SpoolState::THROTTLE_UNLIMITED && copter.ap.using_interlock) {
+    if (!motors->get_interlock() && copter.ap.using_interlock) {
+        // interlock does not allow motors to run
         return false;
     }
 
@@ -164,7 +164,14 @@ void Mode::auto_takeoff_run()
     if (motors->get_spool_state() == AP_Motors::SpoolState::THROTTLE_UNLIMITED) {
         set_land_complete(false);
     } else {
+        // motors have not completed spool up yet so relax navigation and position controllers
         wp_nav->shift_wp_origin_to_current_pos();
+        pos_control->relax_alt_hold_controllers(0.0f);   // forces throttle output to go to zero
+        pos_control->update_z_controller();
+        attitude_control->set_yaw_target_to_current_heading();
+        attitude_control->reset_rate_controller_I_terms();
+        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(0.0f, 0.0f, 0.0f);
+        return;
     }
 
     // check if we are not navigating because of low altitude
