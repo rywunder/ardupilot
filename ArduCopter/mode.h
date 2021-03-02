@@ -210,16 +210,13 @@ public:
     private:
 
         float look_ahead_yaw();
-        float roi_yaw();
+        float roi_yaw() const;
 
         // auto flight mode's yaw mode
         uint8_t _mode = AUTO_YAW_LOOK_AT_NEXT_WP;
 
         // Yaw will point at this location if mode is set to AUTO_YAW_ROI
         Vector3f roi;
-
-        // bearing from current location to the ROI
-        float _roi_yaw;
 
         // yaw used for YAW_FIXED yaw_mode
         int32_t _fixed_yaw;
@@ -232,10 +229,6 @@ public:
 
         // turn rate (in cds) when auto_yaw_mode is set to AUTO_YAW_RATE
         float _rate_cds;
-
-        // used to reduce update rate to 100hz:
-        uint8_t roi_yaw_counter;
-
     };
     static AutoYaw auto_yaw;
 
@@ -408,7 +401,10 @@ private:
     enum class Options : int32_t {
         AllowArming                        = (1 << 0U),
         AllowTakeOffWithoutRaisingThrottle = (1 << 1U),
+        IgnorePilotYaw                     = (1 << 2U),
     };
+
+    bool use_pilot_yaw(void) const;
 
     bool start_command(const AP_Mission::Mission_Command& cmd);
     bool verify_command(const AP_Mission::Mission_Command& cmd);
@@ -471,7 +467,7 @@ private:
     bool verify_payload_place();
     bool verify_loiter_unlimited();
     bool verify_loiter_time(const AP_Mission::Mission_Command& cmd);
-    bool verify_loiter_to_alt();
+    bool verify_loiter_to_alt() const;
     bool verify_RTL();
     bool verify_wait_delay();
     bool verify_within_distance();
@@ -836,6 +832,8 @@ private:
     // enum for GUID_OPTIONS parameter
     enum class Options : int32_t {
         AllowArmingFromTX = (1U << 0),
+        // this bit is still available, pilot yaw was mapped to bit 2 for symmetry with auto
+        IgnorePilotYaw    = (1U << 2),
     };
 
     void pos_control_start();
@@ -847,6 +845,7 @@ private:
     void posvel_control_run();
     void set_desired_velocity_with_accel_and_fence_limits(const Vector3f& vel_des);
     void set_yaw_state(bool use_yaw, float yaw_cd, bool use_yaw_rate, float yaw_rate_cds, bool relative_angle);
+    bool use_pilot_yaw(void) const;
 
     // controls which controller is run (pos or vel):
     GuidedMode guided_mode = Guided_TakeOff;
@@ -973,6 +972,7 @@ private:
     void update_pilot_lean_angle(float &lean_angle_filtered, float &lean_angle_raw);
     float mix_controls(float mix_ratio, float first_control, float second_control);
     void update_brake_angle_from_velocity(float &brake_angle, float velocity);
+    void init_wind_comp_estimate();
     void update_wind_comp_estimate();
     void get_wind_comp_lean_angles(float &roll_angle, float &pitch_angle);
     void roll_controller_to_pilot_override();
@@ -1061,7 +1061,7 @@ public:
     RTLState state() { return _state; }
 
     // this should probably not be exposed
-    bool state_complete() { return _state_complete; }
+    bool state_complete() const { return _state_complete; }
 
     virtual bool is_landing() const override;
 
@@ -1124,6 +1124,15 @@ private:
     uint32_t _loiter_start_time;
 
     bool terrain_following_allowed;
+
+    // enum for RTL_OPTIONS parameter
+    enum class Options : int32_t {
+        // First pair of bits are still available, pilot yaw was mapped to bit 2 for symmetry with auto
+        IgnorePilotYaw    = (1U << 2),
+    };
+
+    bool use_pilot_yaw(void) const;
+
 };
 
 
@@ -1262,7 +1271,7 @@ protected:
 
 private:
 
-    void log_data();
+    void log_data() const;
     float waveform(float time);
 
     enum class AxisType {
@@ -1319,9 +1328,14 @@ public:
     bool is_autopilot() const override { return false; }
 
     // Throw types
-    enum ThrowModeType {
-        ThrowType_Upward = 0,
-        ThrowType_Drop = 1
+    enum class ThrowType {
+        Upward = 0,
+        Drop = 1
+    };
+
+    enum class PreThrowMotorState {
+        STOPPED = 0,
+        RUNNING = 1,
     };
 
 protected:
