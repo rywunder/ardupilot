@@ -1019,6 +1019,10 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_GROUPINFO("RTL_OPTIONS", 43, ParametersG2, rtl_options, 0),
 #endif
 
+    // @Group: ADAP_
+    // @Path: ../libraries/ADAP_Control.h
+    //AP_SUBGROUPINFO(adap_control, "ADAP_", 44 , ParametersG2, ADAP_Control),
+
     AP_GROUPEND
 };
 
@@ -1026,7 +1030,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
   constructor for g2 object
  */
 ParametersG2::ParametersG2(void)
-    : temp_calibration() // this doesn't actually need constructing, but removing it here is problematic syntax-wise
+    : temp_calibration() //adap_control() // this doesn't actually need constructing, but removing it here is problematic syntax-wise
 #if BEACON_ENABLED == ENABLED
     , beacon(copter.serial_manager)
 #endif
